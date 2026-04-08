@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL Injection Lab</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0f1117;
+      --surface:    #161b27;
+      --surface-2:  #1c2236;
+      --surface-3:  #232940;
+      --border:     #252e42;
+      --border-2:   #2e3d5c;
+      --text:       #dde5f5;
+      --text-sub:   #7a90b8;
+      --text-dim:   #3d5070;
+      --blue:       #4f8ef7;
+      --green:      #34d399;
+      --red:        #f87171;
+      --yellow:     #fbbf24;
+      --purple:     #c084fc;
+      --cyan:       #67e8f9;
+      --blue-bg:    rgba(79,142,247,.1);
+      --blue-brd:   rgba(79,142,247,.28);
+      --green-bg:   rgba(52,211,153,.08);
+      --green-brd:  rgba(52,211,153,.26);
+      --red-bg:     rgba(248,113,113,.08);
+      --red-brd:    rgba(248,113,113,.24);
+      --yellow-bg:  rgba(251,191,36,.08);
+      --yellow-brd: rgba(251,191,36,.28);
+      --purple-bg:  rgba(192,132,252,.08);
+      --purple-brd: rgba(192,132,252,.28);
+      --syn-kw:  #c084fc;
+      --syn-str: #86efac;
+      --syn-inj: #fb923c;
+      --syn-cmt: #4b6280;
+      --syn-num: #67e8f9;
+      --syn-tbl: #fde68a;
+      --syn-op:  #f472b6;
+      --mono: 'Cascadia Code','Fira Code','Consolas',monospace;
+      --r: 10px; --r-sm: 6px;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       LAB BAR
+    ═══════════════════════════════════════════════════ */
+    .lab-bar {
+      background: #0a0d14;
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 46px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      z-index: 50;
+    }
+
+    .lab-logo {
+      width: 24px; height: 24px;
+      background: linear-gradient(135deg,#4f8ef7,#22d3ee);
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; flex-shrink: 0;
+    }
+
+    .lab-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-sub);
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
+
+    .lab-sep {
+      width: 1px; height: 18px;
+      background: var(--border-2);
+      margin: 0 6px;
+      flex-shrink: 0;
+    }
+
+    .scenario-tabs { display: flex; gap: 2px; overflow-x: auto; }
+    .scenario-tabs::-webkit-scrollbar { display: none; }
+
+    .stab {
+      padding: 5px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-dim);
+      background: none;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .stab:hover { color: var(--text-sub); background: var(--surface-2); }
+    .stab.on    { color: var(--text);     background: var(--surface-2); font-weight: 600; }
+
+    /* ═══════════════════════════════════════════════════
+       VIEWPORT
+    ═══════════════════════════════════════════════════ */
+    .viewport {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: 280px;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       SQL CONSOLE (DevTools-style, fixed bottom)
+    ═══════════════════════════════════════════════════ */
+    .sql-console {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 100;
+      background: #09090f;
+      border-top: 1px solid var(--border);
+      transition: height 0.2s ease;
+      height: 280px;
+    }
+
+    .sql-console.closed { height: 38px; }
+
+    .devtools-tabs {
+      height: 38px;
+      background: #0d1020;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: stretch;
+      overflow: hidden;
+    }
+
+    .dt-tab {
+      padding: 0 16px;
+      font-size: 12px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      border-right: 1px solid var(--border);
+      cursor: default;
+      white-space: nowrap;
+    }
+
+    .dt-tab.sql-tab {
+      color: var(--cyan);
+      font-weight: 600;
+      cursor: pointer;
+      gap: 6px;
+    }
+
+    .dt-tab.sql-tab:hover { background: rgba(103,232,249,.04); }
+
+    .dt-collapse {
+      margin-left: auto;
+      padding: 0 14px;
+      font-size: 11px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      border-left: 1px solid var(--border);
+      gap: 5px;
+      transition: color 0.15s;
+    }
+
+    .dt-collapse:hover { color: var(--text-sub); }
+
+    .console-body {
+      padding: 12px 18px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      height: 242px;
+      overflow: hidden;
+    }
+
+    .console-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .console-arrow {
+      color: var(--syn-str);
+      font-family: var(--mono);
+      font-size: 13px;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    .console-sql {
+      font-family: var(--mono);
+      font-size: 14px;
+      line-height: 1.9;
+      word-break: break-all;
+      white-space: pre-wrap;
+      flex: 1;
+    }
+
+    /* ── Access log ── */
+    .console-access {
+      flex: 1;
+      overflow-y: auto;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 6px 0;
+      min-height: 0;
+    }
+
+    .console-access::-webkit-scrollbar { width: 3px; }
+    .console-access::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+
+    .log-entry {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 2px 6px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      line-height: 1.7;
+      border-radius: 3px;
+    }
+
+    .log-entry:hover { background: rgba(255,255,255,.02); }
+    .log-dim    { color: var(--text-dim); flex-shrink: 0; }
+    .log-method { color: var(--blue); flex-shrink: 0; font-weight: 700; }
+    .log-path   { color: var(--text-sub); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .log-note   { color: var(--text-dim); font-size: 11px; flex-shrink: 0; }
+    .log-200    { color: var(--green); font-weight: 700; flex-shrink: 0; }
+    .log-401    { color: var(--red); font-weight: 700; flex-shrink: 0; }
+    .log-403    { color: var(--purple); font-weight: 700; flex-shrink: 0; }
+    .log-404    { color: var(--text-dim); font-weight: 700; flex-shrink: 0; }
+    .log-429    { color: var(--yellow); font-weight: 700; flex-shrink: 0; }
+    .log-500    { color: var(--red); font-weight: 700; flex-shrink: 0; }
+    .log-latency { color: var(--text-dim); flex-shrink: 0; font-size: 11px; }
+
+    .log-empty {
+      padding: 8px 6px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    /* ── Legend row ── */
+    .console-legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    .leg { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-dim); }
+    .leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+    /* SQL token classes */
+    .sql-kw  { color: var(--syn-kw);  font-weight: 600; }
+    .sql-str { color: var(--syn-str); }
+    .sql-inj { color: var(--syn-inj); font-weight: 600; text-decoration: underline wavy rgba(251,146,60,.4); }
+    .sql-cmt { color: var(--syn-cmt); font-style: italic; }
+    .sql-num { color: var(--syn-num); }
+    .sql-tbl { color: var(--syn-tbl); }
+    .sql-op  { color: var(--syn-op);  }
+
+    /* ═══════════════════════════════════════════════════
+       LOADING & RATE LIMIT
+    ═══════════════════════════════════════════════════ */
+    .loading-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-dim);
+      font-size: 14px;
+      padding: 12px 0;
+    }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid var(--border-2);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.65s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .rate-limit-msg {
+      background: var(--yellow-bg);
+      border: 1px solid var(--yellow-brd);
+      border-left: 3px solid var(--yellow);
+      border-radius: var(--r-sm);
+      padding: 14px 18px;
+      font-size: 14px;
+      color: var(--yellow);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       SHARED SITE COMPONENTS
+    ═══════════════════════════════════════════════════ */
+    .site-topbar {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 0 32px;
+      gap: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .site-logo { font-size: 18px; font-weight: 800; letter-spacing: -0.4px; }
+
+    .topbar-links { display: flex; gap: 2px; }
+
+    .topbar-link {
+      padding: 6px 12px;
+      font-size: 13.5px;
+      color: var(--text-sub);
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+
+    .topbar-link:hover { color: var(--text); background: var(--surface-2); }
+    .topbar-link.active { color: var(--text); font-weight: 500; }
+
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    .tbtn {
+      padding: 7px 16px;
+      border-radius: var(--r-sm);
+      font-size: 13.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tbtn-ghost {
+      background: none;
+      border: 1px solid var(--border-2);
+      color: var(--text-sub);
+    }
+
+    .tbtn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+    .tbtn-solid {
+      background: var(--blue);
+      border: none;
+      color: #fff;
+    }
+
+    .tbtn-solid:hover { background: #3b7af5; }
+
+    .field { margin-bottom: 18px; }
+    .field-last { margin-bottom: 0; }
+
+    .flbl {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-sub);
+      margin-bottom: 7px;
+    }
+
+    .finp {
+      width: 100%;
+      background: var(--surface-2);
+      border: 1.5px solid var(--border-2);
+      border-radius: var(--r-sm);
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .finp::placeholder { color: var(--text-dim); font-family: 'Segoe UI',system-ui,sans-serif; }
+    .finp:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,142,247,.12); }
+    .finp.bad   { border-color: var(--red);  box-shadow: 0 0 0 3px rgba(248,113,113,.1); }
+
+    .inj-notice {
+      display: none;
+      align-items: center;
+      gap: 5px;
+      margin-top: 5px;
+      font-size: 12.5px;
+      color: var(--red);
+    }
+
+    .inj-notice.show { display: flex; }
+
+    .btn {
+      padding: 11px 24px;
+      border-radius: var(--r-sm);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn:active { transform: translateY(1px); }
+    .btn-blue  { background: var(--blue);  color: #fff; }
+    .btn-blue:hover  { background: #3b7af5; }
+    .btn-full  { width: 100%; }
+
+    .response {
+      border-radius: var(--r-sm);
+      padding: 16px 18px;
+      border: 1px solid transparent;
+      border-left: 3px solid;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .response.ok      { background: var(--green-bg);  border-color: var(--green-brd);  border-left-color: var(--green); }
+    .response.fail    { background: var(--red-bg);    border-color: var(--red-brd);    border-left-color: var(--red); }
+    .response.neutral { background: var(--surface-2); border-color: var(--border);     border-left-color: var(--border-2); }
+    .response.blocked { background: var(--purple-bg); border-color: var(--purple-brd); border-left-color: var(--purple); }
+    .response.partial { background: var(--yellow-bg); border-color: var(--yellow-brd); border-left-color: var(--yellow); }
+
+    .res-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 15px;
+    }
+
+    .response.ok      .res-title { color: var(--green); }
+    .response.fail    .res-title { color: var(--red); }
+    .response.blocked .res-title { color: var(--purple); }
+    .response.partial .res-title { color: var(--yellow); }
+
+    .res-body { color: var(--text-sub); }
+
+    .flag-box {
+      margin-top: 14px;
+      background: rgba(251,191,36,.06);
+      border: 1px solid var(--yellow-brd);
+      border-radius: var(--r-sm);
+      padding: 14px 20px;
+      text-align: center;
+    }
+
+    .flag-lbl {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    .flag-val {
+      font-family: var(--mono);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--yellow);
+      letter-spacing: 1px;
+      animation: pop .4s cubic-bezier(.175,.885,.32,1.275);
+    }
+
+    @keyframes pop { from { transform: scale(.88); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    .tbl-wrap {
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    table.dtbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .dtbl th {
+      background: var(--surface-3);
+      border-bottom: 1px solid var(--border);
+      padding: 9px 16px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .dtbl td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-sub);
+    }
+
+    .dtbl tr:last-child td { border-bottom: none; }
+    .dtbl tr:hover td { background: rgba(255,255,255,.02); }
+    .dtbl tr.leaked td { color: var(--yellow); background: rgba(251,191,36,.04); }
+    .dtbl tr.ok-row td { color: var(--green); }
+
+    .pg { max-width: 960px; margin: 0 auto; padding: 36px 32px; }
+
+    /* ═══════════════════════════════════════════════════
+       SCENARIO 1: CorpNet Login
+    ═══════════════════════════════════════════════════ */
+    .s1-wrap { background: var(--bg); min-height: 100%; }
+    .s1-nav  { background: #0d1424; }
+
+    .s1-body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 24px;
+    }
+
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 44px 40px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .login-brand { text-align: center; margin-bottom: 32px; }
+
+    .brand-icon {
+      width: 52px; height: 52px;
+      border-radius: 13px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 14px;
+    }
+
+    .login-brand h2 { font-size: 21px; font-weight: 700; margin-bottom: 5px; }
+    .login-brand p  { font-size: 14px; color: var(--text-sub); }
+
+    .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+    .login-sub {
+      text-align: center;
+      margin-top: 18px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    .login-sub a { color: var(--blue); text-decoration: none; cursor: pointer; }
+
+    /* ═══════════════════════════════════════════════════
+       SCENARIO 2: DataSync Account Lookup
+    ═══════════════════════════════════════════════════ */
+    .s2-wrap { background: var(--bg); }
+    .s2-nav  { background: #0d1424; }
+
+    .s2-hero {
+      background: linear-gradient(180deg,#11182a,var(--bg));
+      border-bottom: 1px solid var(--border);
+      padding: 32px 32px 28px;
+    }
+
+    .s2-hero h1 { font-size: 22px; font-weight: 700; margin-bottom: 5px; }
+    .s2-hero p  { font-size: 14px; color: var(--text-sub); }
+
+    .lookup-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 28px;
+      margin-bottom: 22px;
+    }
+
+    .lookup-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+
+    .inline-row { display: flex; gap: 10px; }
+    .inline-row .finp { flex: 1; }
+
+    .btn-lookup {
+      padding: 11px 22px;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: var(--r-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+
+    .btn-lookup:hover { background: #3b7af5; }
+
+    .status-grid {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    .srow {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .srow:last-child { border-bottom: none; }
+    .skey { font-size: 13px; color: var(--text-dim); }
+    .sval { font-size: 14px; font-weight: 500; }
+    .sval.active { color: var(--green); }
+
+    /* ═══════════════════════════════════════════════════
+       SCENARIO 3: NexShop Product Search
+    ═══════════════════════════════════════════════════ */
+    .s3-wrap { background: var(--bg); }
+    .s3-nav  { background: #0c1220; }
+
+    .s3-search-bar {
+      background: linear-gradient(180deg,#101726,var(--bg));
+      border-bottom: 1px solid var(--border);
+      padding: 28px 32px;
+    }
+
+    .s3-search-bar h2 { font-size: 20px; font-weight: 700; margin-bottom: 14px; }
+
+    .search-row { display: flex; gap: 0; max-width: 580px; }
+
+    .search-inp {
+      flex: 1;
+      background: var(--surface-2);
+      border: 1.5px solid var(--border-2);
+      border-right: none;
+      border-radius: var(--r-sm) 0 0 var(--r-sm);
+      padding: 12px 16px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .search-inp::placeholder { color: var(--text-dim); font-family: 'Segoe UI',system-ui,sans-serif; }
+    .search-inp:focus { border-color: var(--blue); }
+    .search-inp.bad   { border-color: var(--red); }
+
+    .btn-search {
+      padding: 12px 24px;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 0 var(--r-sm) var(--r-sm) 0;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+
+    .btn-search:hover { background: #3b7af5; }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 14px;
+    }
+
+    .product-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 18px;
+      transition: border-color 0.15s;
+    }
+
+    .product-card:hover { border-color: var(--border-2); }
+    .product-card.leaked { border-color: rgba(251,191,36,.5); background: rgba(251,191,36,.03); }
+
+    .p-cat { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-dim); margin-bottom: 8px; }
+    .p-name { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .p-name.leaked { color: var(--yellow); }
+    .p-price { font-size: 20px; font-weight: 800; color: var(--blue); }
+    .p-price.leaked { color: var(--text-dim); font-size: 13px; font-weight: 400; }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px;
+      color: var(--text-dim);
+      font-size: 14px;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       SCENARIO 4: AdminCP Panel
+    ═══════════════════════════════════════════════════ */
+    .s4-wrap {
+      background: var(--bg);
+      display: flex;
+      min-height: 100%;
+    }
+
+    .s4-sidebar {
+      width: 220px;
+      background: #0b0f1a;
+      border-right: 1px solid var(--border);
+      flex-shrink: 0;
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .s4-brand { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+    .s4-brand h3 { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; }
+    .s4-brand p  { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+    .sideitem {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 20px;
+      font-size: 13.5px;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .sideitem:hover { color: var(--text-sub); background: rgba(255,255,255,.03); }
+    .sideitem.on    { color: var(--blue); background: rgba(79,142,247,.07); font-weight: 500; }
+    .sideitem-icon  { font-size: 15px; }
+
+    .s4-main { flex: 1; padding: 28px 32px; overflow-y: auto; }
+
+    .s4-toprow {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+    }
+
+    .s4-toprow h2 { font-size: 20px; font-weight: 700; }
+    .s4-toprow p  { font-size: 13px; color: var(--text-sub); margin-top: 3px; }
+
+    .waf-chip {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--purple-bg);
+      border: 1px solid var(--purple-brd);
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-size: 13px;
+      color: var(--purple);
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .filter-row { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
+    .filter-row .finp { flex: 1; }
+
+    .btn-go {
+      padding: 11px 22px;
+      background: none;
+      border: 1.5px solid var(--border-2);
+      color: var(--text-sub);
+      border-radius: var(--r-sm);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .btn-go:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Lab bar ─────────────────────────────────────── -->
+  <div class="lab-bar">
+    <div class="lab-logo">🛡</div>
+    <span class="lab-title">SQL Injection Lab</span>
+    <div class="lab-sep"></div>
+    <div class="scenario-tabs" id="tabs"></div>
+  </div>
+
+  <!-- ─── Website viewport ────────────────────────────── -->
+  <div class="viewport" id="viewport"></div>
+
+  <!-- ─── SQL Inspector (DevTools-style) ──────────────── -->
+  <div class="sql-console" id="sqlConsole">
+    <div class="devtools-tabs">
+      <div class="dt-tab">Elements</div>
+      <div class="dt-tab">Console</div>
+      <div class="dt-tab">Network</div>
+      <div class="dt-tab">Sources</div>
+      <div class="dt-tab sql-tab" onclick="toggleConsole()">▶ SQL Inspector</div>
+      <div class="dt-collapse" onclick="toggleConsole()">
+        <span id="collapseLabel">▼ collapse</span>
+      </div>
+    </div>
+    <div class="console-body" id="consoleBody">
+      <div class="console-row">
+        <span class="console-arrow">▶</span>
+        <div class="console-sql" id="sqlDisplay">-- Waiting for input...</div>
+      </div>
+      <div class="console-access" id="accessLog">
+        <div class="log-empty">-- No requests yet. Submit a form to see server logs here.</div>
+      </div>
+      <div class="console-legend">
+        <div class="leg"><span class="leg-dot" style="background:var(--syn-kw)"></span>keyword</div>
+        <div class="leg"><span class="leg-dot" style="background:var(--syn-str)"></span>string</div>
+        <div class="leg"><span class="leg-dot" style="background:var(--syn-inj)"></span>injection</div>
+        <div class="leg"><span class="leg-dot" style="background:var(--syn-cmt)"></span>comment</div>
+        <div class="leg"><span class="leg-dot" style="background:var(--syn-tbl)"></span>table</div>
+        <div class="leg"><span class="leg-dot" style="background:var(--syn-num)"></span>number</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════ */
+let cur = 1;
+let consoleOpen = true;
+
+/* ═══════════════════════════════════════════════════════════
+   SESSION-RANDOMIZED FLAGS
+   Generated fresh on every page load — can't be googled.
+═══════════════════════════════════════════════════════════ */
+function genToken() {
+  return [...crypto.getRandomValues(new Uint8Array(5))]
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
+}
+
+const FLAGS = {
+  1: `FLAG{AUTH_${genToken()}}`,
+  2: `FLAG{BOOL_${genToken()}}`,
+  3: `FLAG{UNION_${genToken()}}`,
+  4: `FLAG{WAF_${genToken()}}`
+};
+
+/* ═══════════════════════════════════════════════════════════
+   RATE LIMITING  (per scenario, resets after cooldown)
+═══════════════════════════════════════════════════════════ */
+const rateState = {};
+
+function checkRate(n) {
+  const now = Date.now();
+  if (!rateState[n]) rateState[n] = { count: 0, resetAt: 0 };
+  const s = rateState[n];
+  if (now < s.resetAt) {
+    return { blocked: true, wait: Math.ceil((s.resetAt - now) / 1000) };
+  }
+  s.count++;
+  if (s.count >= 10) {
+    s.resetAt = now + 20000; // 20-second cooldown
+    s.count = 0;
+    return { blocked: true, wait: 20 };
+  }
+  return { blocked: false };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SERVER-SIDE ACCESS LOG
+═══════════════════════════════════════════════════════════ */
+const accessLog = [];
+
+function logAccess(method, path, status, ms, note) {
+  const t = new Date().toTimeString().slice(0, 8);
+  accessLog.unshift({ t, method, path, status, ms: Math.round(ms), note: note || '' });
+  if (accessLog.length > 40) accessLog.pop();
+  renderAccessLog();
+}
+
+function statusCls(code) {
+  if (code === 200) return 'log-200';
+  if (code === 401) return 'log-401';
+  if (code === 403) return 'log-403';
+  if (code === 404) return 'log-404';
+  if (code === 429) return 'log-429';
+  return 'log-500';
+}
+
+function renderAccessLog() {
+  const el = document.getElementById('accessLog');
+  if (!el) return;
+  if (!accessLog.length) {
+    el.innerHTML = '<div class="log-empty">-- No requests yet.</div>';
+    return;
+  }
+  el.innerHTML = accessLog.map(e => `
+    <div class="log-entry">
+      <span class="log-dim">[${e.t}]</span>
+      <span class="log-method">${e.method}</span>
+      <span class="log-path">${esc(e.path)}</span>
+      <span class="${statusCls(e.status)}">${e.status}</span>
+      <span class="log-latency">${e.ms}ms</span>
+      ${e.note ? `<span class="log-note">// ${esc(e.note)}</span>` : ''}
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TIMING SIMULATION
+═══════════════════════════════════════════════════════════ */
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function setLoading(el) {
+  el.innerHTML = `<div class="loading-row">
+    <div class="spinner"></div>
+    <span>Processing request…</span>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════════════════════ */
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function v(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+
+function hasInj(s) {
+  const t = s.toLowerCase();
+  return t.includes("'") || t.includes('"') || t.includes('--') ||
+    t.includes('/*') || t.includes('#') ||
+    /\b(union|select|drop|insert|update|delete)\b/.test(t) ||
+    /\bor\b.*(=|true|false)/i.test(t) ||
+    /\band\b.*(=|true|false)/i.test(t);
+}
+
+/* Evaluate simple boolean expressions: 1=1, 1=2, 'a'='a', true, false */
+function evalBool(expr) {
+  const e = expr.toLowerCase().replace(/\/\*.*?\*\//g, ' ').trim();
+  if (e === 'true')  return true;
+  if (e === 'false') return false;
+  const numEq = e.match(/^(\d+)\s*=\s*(\d+)$/);
+  if (numEq) return numEq[1] === numEq[2];
+  const strEq = e.match(/^'([^']*)'\s*=\s*'([^']*)'/);
+  if (strEq) return strEq[1] === strEq[2];
+  return null; // indeterminate
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SEMANTIC INJECTION VALIDATORS
+═══════════════════════════════════════════════════════════ */
+
+/* S1: Does this username break out of the string and bypass auth?
+   Accepts: admin'-- | ' OR 1=1-- | ' OR '1'='1 | x' OR true-- etc. */
+function sqliAuthBypass(s) {
+  const l = s.toLowerCase().replace(/\/\*.*?\*\//g, ' ').trim();
+  // Quote + line/block comment → kills AND password = '...' clause
+  if (/'\s*(--|#)/.test(l)) return true;
+  // Quote + OR tautology
+  if (/'/.test(l) && /\bor\b/.test(l)) {
+    const qi = l.indexOf("'");
+    const after = l.slice(qi + 1);
+    if (/or\s+1\s*=\s*1/.test(after))   return true;
+    if (/or\s+true/.test(after))         return true;
+    // String equality tautology: 'x'='x', 'abc'='abc'
+    if (/or\s+'([^']*)'\s*=\s*'([^']*)'/.test(after)) {
+      const m = after.match(/or\s+'([^']*)'\s*=\s*'([^']*)'/);
+      if (m) return true; // accept all — attacker controls both sides
+    }
+    // Numeric tautology: 1=1, 2=2
+    const nm = after.match(/or\s+(\d+)\s*=\s*(\d+)/);
+    if (nm && nm[1] === nm[2]) return true;
+  }
+  return false;
+}
+
+/* S2: Extract and evaluate a boolean AND injection:
+   e.g. testuser' AND 1=1 --  →  {prefix:'testuser', bool:true}
+        testuser' AND 1=2 --  →  {prefix:'testuser', bool:false}      */
+function sqliExtractAnd(s) {
+  const l = s.toLowerCase().replace(/\/\*.*?\*\//g, ' ');
+  const qi = l.indexOf("'");
+  if (qi === -1) return null;
+  const prefix   = l.slice(0, qi).trim();
+  let   after    = l.slice(qi + 1).trim();
+  after          = after.replace(/\s*(--|#).*$/, '').trim(); // strip comment
+  const andMatch = after.match(/^and\s+(.+)$/);
+  if (!andMatch) return null;
+  return { prefix, bool: evalBool(andMatch[1].trim()) };
+}
+
+/* S4: WAF signature check — blocks generic patterns, passes specific ones */
+function wafCheck(s) {
+  const l = s.toLowerCase().replace(/\/\*.*?\*\//g, ' ');
+  if (/'\s*or\s+1\s*=\s*1/.test(l))            return 'RULE-001: OR tautology (numeric)';
+  if (/'\s*or\s+true/.test(l))                  return 'RULE-002: OR tautology (boolean)';
+  if (/union\s+(all\s+)?select/.test(l))         return 'RULE-003: UNION SELECT detected';
+  if (/\b(drop|delete|insert|update)\b/.test(l)) return 'RULE-004: DML statement blocked';
+  // Block generic string tautologies ' OR 'x'='x  (where both values equal)
+  const strTaut = l.match(/'\s*or\s+'([^']*)'\s*=\s*'([^']*)'/);
+  if (strTaut && strTaut[1] === strTaut[2])      return 'RULE-005: String tautology';
+  return null; // passes WAF
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SCENARIO DATA  (flags come from SESSION FLAGS above)
+═══════════════════════════════════════════════════════════ */
+const SCENARIOS = {
+  1: {
+    label:   'Login Portal',
+    queryFn: (u, p) => `SELECT * FROM users WHERE username = '${u}' AND password = '${p}'`,
+    check(u) { return sqliAuthBypass(u) ? 'ok' : (hasInj(u) ? 'fail' : 'bad'); }
+  },
+  2: {
+    label:   'Account Lookup',
+    queryFn: (u) => `SELECT * FROM users WHERE username = '${u}' AND active = 1`,
+    check(u) {
+      const parsed = sqliExtractAnd(u);
+      if (!parsed) return hasInj(u) ? 'fail' : 'bad';
+      const validUser = parsed.prefix === 'testuser';
+      if (parsed.bool === true)  return validUser ? 'ok' : 'no_user';
+      if (parsed.bool === false) return 'false_bool';
+      // Unknown/complex condition but injection attempted
+      return hasInj(u) ? 'fail' : 'bad';
+    }
+  },
+  3: {
+    label:   'Product Search',
+    queryFn: (q) => `SELECT id, name, price FROM products WHERE name = '${q}'`,
+    check(q) {
+      const l = q.toLowerCase().replace(/\/\*.*?\*\//g, ' ').trim();
+      if (!l.includes("'")) return hasInj(q) ? 'fail' : 'bad';
+      // Detect UNION SELECT and count columns
+      const um = l.match(/'.*?union\s+(?:all\s+)?select\s+([\s\S]*?)(?:\s*(--|#)|$)/i);
+      if (um) {
+        const cols = um[1].split(',').map(s => s.trim()).filter(Boolean).length;
+        if (cols < 3) return 'col_low';
+        if (cols > 3) return 'col_high';
+        return 'ok';
+      }
+      if (/union/i.test(l)) return 'fail'; // malformed
+      return hasInj(q) ? 'fail' : 'bad';
+    }
+  },
+  4: {
+    label:   'Admin Panel',
+    queryFn: (u) => `SELECT * FROM admin_users WHERE username = '${u}' AND verified = 1`,
+    check(u) {
+      const rule = wafCheck(u);
+      if (rule) return { type: 'waf', rule };
+      const l = u.toLowerCase().replace(/\/\*.*?\*\//g, ' ');
+      // Specific column-value bypass (WAF misses field-targeted injections)
+      if (/'\s*(or|and)\s+username\s*(=|like)\s*'admin/.test(l)) return 'ok';
+      return hasInj(u) ? 'fail' : 'bad';
+    }
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════
+   SQL SYNTAX HIGHLIGHTER  (supports --, #, block comments)
+═══════════════════════════════════════════════════════════ */
+const KW  = ['SELECT','FROM','WHERE','AND','OR','UNION','ALL','NOT','IN','LIKE','NULL','AS','JOIN','ON'];
+const TBL = ['users','secrets','products','admin_users'];
+
+function hlSql(raw) {
+  let out = '', i = 0, s = raw;
+  while (i < s.length) {
+    // Line comment --
+    if (s[i] === '-' && s[i+1] === '-') {
+      out += `<span class="sql-cmt">${esc(s.slice(i))}</span>`;
+      break;
+    }
+    // Hash comment #
+    if (s[i] === '#') {
+      out += `<span class="sql-cmt">${esc(s.slice(i))}</span>`;
+      break;
+    }
+    // Block comment /* ... */
+    if (s[i] === '/' && s[i+1] === '*') {
+      let j = i + 2;
+      while (j < s.length - 1 && !(s[j] === '*' && s[j+1] === '/')) j++;
+      j = Math.min(j + 2, s.length);
+      out += `<span class="sql-cmt">${esc(s.slice(i, j))}</span>`;
+      i = j; continue;
+    }
+    // Quoted string
+    if (s[i] === "'") {
+      let j = i + 1;
+      while (j < s.length && s[j] !== "'") j++;
+      if (j < s.length) {
+        out += `<span class="sql-str">'${esc(s.slice(i+1,j))}'</span>`;
+        i = j + 1;
+      } else {
+        // Unclosed quote → injection in progress
+        out += `<span class="sql-inj">'${esc(s.slice(i+1))}</span>`;
+        break;
+      }
+      continue;
+    }
+    // Number
+    if (/[0-9]/.test(s[i]) && (i === 0 || /\W/.test(s[i-1]))) {
+      let j = i;
+      while (j < s.length && /[0-9]/.test(s[j])) j++;
+      out += `<span class="sql-num">${esc(s.slice(i,j))}</span>`;
+      i = j; continue;
+    }
+    // Identifier / keyword / table name
+    if (/[a-zA-Z_%]/.test(s[i])) {
+      let j = i;
+      while (j < s.length && /[a-zA-Z0-9_%]/.test(s[j])) j++;
+      const w = s.slice(i, j);
+      if (KW.includes(w.toUpperCase()))
+        out += `<span class="sql-kw">${esc(w.toUpperCase())}</span>`;
+      else if (TBL.includes(w.toLowerCase()))
+        out += `<span class="sql-tbl">${esc(w)}</span>`;
+      else
+        out += esc(w);
+      i = j; continue;
+    }
+    // Operator
+    if ('=<>!'.includes(s[i])) {
+      out += `<span class="sql-op">${esc(s[i])}</span>`;
+      i++; continue;
+    }
+    out += esc(s[i]); i++;
+  }
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SQL CONSOLE
+═══════════════════════════════════════════════════════════ */
+function updateSql(query) {
+  document.getElementById('sqlDisplay').innerHTML = hlSql(query);
+}
+
+function toggleConsole() {
+  consoleOpen = !consoleOpen;
+  document.getElementById('sqlConsole').classList.toggle('closed', !consoleOpen);
+  document.getElementById('collapseLabel').textContent = consoleOpen ? '▼ collapse' : '▲ expand';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SCENARIO TABS
+═══════════════════════════════════════════════════════════ */
+function renderTabs() {
+  document.getElementById('tabs').innerHTML = [1,2,3,4].map(n =>
+    `<button class="stab${cur===n?' on':''}" onclick="goTo(${n})">${SCENARIOS[n].label}</button>`
+  ).join('');
+}
+
+function goTo(n) {
+  cur = n;
+  renderTabs();
+  renderScenario(n);
+  updateSql(SCENARIOS[n].queryFn('', ''));
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RENDER SCENARIOS
+═══════════════════════════════════════════════════════════ */
+function renderScenario(n) {
+  const vp = document.getElementById('viewport');
+  if      (n === 1) vp.innerHTML = s1Html();
+  else if (n === 2) vp.innerHTML = s2Html();
+  else if (n === 3) vp.innerHTML = s3Html();
+  else if (n === 4) vp.innerHTML = s4Html();
+}
+
+/* ─── Scenario 1: CorpNet Login Portal ───────────────── */
+function s1Html() {
+  return `
+  <div class="s1-wrap">
+    <div class="s1-nav site-topbar">
+      <span class="site-logo" style="color:#fff">🔷 CorpNet</span>
+      <div class="topbar-links">
+        <a class="topbar-link">Home</a>
+        <a class="topbar-link">About</a>
+        <a class="topbar-link">Support</a>
+      </div>
+      <div class="topbar-right">
+        <button class="tbtn tbtn-ghost">Contact IT</button>
+      </div>
+    </div>
+
+    <div class="s1-body">
+      <div class="login-card">
+        <div class="login-brand">
+          <div class="brand-icon" style="background:linear-gradient(135deg,#4f8ef7,#7c3aed)">🔐</div>
+          <h2>Employee Portal</h2>
+          <p>Sign in to access internal resources</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label class="flbl">Username</label>
+          <input class="finp" id="s1u" type="text"
+            placeholder="Enter your username"
+            oninput="s1_update()" autocomplete="off" spellcheck="false" />
+          <div class="inj-notice" id="s1w">⚠ Unexpected characters in input</div>
+        </div>
+
+        <div class="field field-last">
+          <label class="flbl">Password</label>
+          <input class="finp" id="s1p" type="password"
+            placeholder="Enter your password"
+            oninput="s1_update()" autocomplete="off" />
+        </div>
+
+        <div class="divider"></div>
+
+        <button class="btn btn-blue btn-full" onclick="s1_submit()">Sign In →</button>
+
+        <div class="login-sub">
+          <a>Forgot password?</a> &nbsp;·&nbsp; <a>Contact IT Support</a>
+        </div>
+
+        <div id="s1result" style="margin-top:18px"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function s1_update() {
+  const u = v('s1u'), p = v('s1p');
+  updateSql(SCENARIOS[1].queryFn(u, p));
+  const inj = hasInj(u);
+  document.getElementById('s1u').classList.toggle('bad', inj);
+  document.getElementById('s1w').classList.toggle('show', inj);
+}
+
+async function s1_submit() {
+  const el = document.getElementById('s1result');
+  const rate = checkRate(1);
+  if (rate.blocked) {
+    el.innerHTML = `<div class="rate-limit-msg">⏱ Too many attempts — rate limited. Retry in ${rate.wait}s.</div>`;
+    logAccess('POST', '/api/auth/login', 429, 1, 'rate limited');
+    return;
+  }
+
+  const u = v('s1u'), p = v('s1p');
+  setLoading(el);
+
+  // Auth failures return fast (no DB hit needed), successes take longer (session setup)
+  const r = SCENARIOS[1].check(u);
+  const ms = r === 'ok' ? 200 + Math.random() * 200 : 80 + Math.random() * 120;
+  await delay(ms);
+
+  if (r === 'ok') {
+    el.innerHTML = `<div class="response ok">
+      <div class="res-title">✅ Authentication successful</div>
+      <div class="res-body">
+        Welcome back, <strong>admin</strong>. Session established.<br>
+        Access level: <strong style="color:var(--green)">ADMINISTRATOR</strong>
+      </div>
+      <div class="flag-box">
+        <div class="flag-lbl">Session Token (leaked)</div>
+        <div class="flag-val">${FLAGS[1]}</div>
+      </div>
+    </div>`;
+    logAccess('POST', '/api/auth/login', 200, ms, 'session created');
+  } else if (r === 'fail') {
+    el.innerHTML = `<div class="response fail">
+      <div class="res-title">✗ Query Error</div>
+      <div class="res-body">A database error occurred while processing your request. Your input may contain unbalanced syntax.</div>
+    </div>`;
+    logAccess('POST', '/api/auth/login', 500, ms, 'SQL parse error');
+  } else {
+    el.innerHTML = `<div class="response fail">
+      <div class="res-title">✗ Authentication failed</div>
+      <div class="res-body">The username or password you entered is incorrect. Please try again.</div>
+    </div>`;
+    logAccess('POST', '/api/auth/login', 401, ms);
+  }
+}
+
+/* ─── Scenario 2: DataSync Account Lookup ────────────── */
+function s2Html() {
+  return `
+  <div class="s2-wrap">
+    <div class="s2-nav site-topbar">
+      <span class="site-logo" style="color:#34d399">⬡ DataSync</span>
+      <div class="topbar-links">
+        <a class="topbar-link active">Support Portal</a>
+        <a class="topbar-link">Tickets</a>
+        <a class="topbar-link">Documentation</a>
+      </div>
+      <div class="topbar-right">
+        <button class="tbtn tbtn-ghost">Agent Login</button>
+      </div>
+    </div>
+
+    <div class="s2-hero">
+      <div style="max-width:960px;margin:0 auto;padding:0 32px">
+        <h1>Account Verification</h1>
+        <p>Look up a customer account by username to check its status.</p>
+      </div>
+    </div>
+
+    <div class="pg">
+      <div class="lookup-card">
+        <h3>Account Status Lookup</h3>
+        <div class="inline-row">
+          <input class="finp" id="s2u" type="text"
+            placeholder="Enter username (e.g. testuser)"
+            oninput="s2_update()" autocomplete="off" spellcheck="false" />
+          <button class="btn-lookup" onclick="s2_submit()">Look Up Account</button>
+        </div>
+        <div class="inj-notice" id="s2w" style="margin-top:7px">⚠ Unexpected characters in input</div>
+        <div id="s2result"></div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px">
+        <p style="font-size:13px;color:var(--text-dim);line-height:1.7">
+          <strong style="color:var(--text-sub)">Note:</strong> This tool is for support agents only.
+          All queries are logged for compliance. Only active accounts (active = 1) will appear in results.
+        </p>
+      </div>
+    </div>
+  </div>`;
+}
+
+function s2_update() {
+  const u = v('s2u');
+  updateSql(SCENARIOS[2].queryFn(u));
+  const inj = hasInj(u);
+  document.getElementById('s2u').classList.toggle('bad', inj);
+  document.getElementById('s2w').classList.toggle('show', inj);
+}
+
+async function s2_submit() {
+  const el = document.getElementById('s2result');
+  const rate = checkRate(2);
+  if (rate.blocked) {
+    el.innerHTML = `<div class="rate-limit-msg" style="margin-top:16px">⏱ Too many lookups — rate limited. Retry in ${rate.wait}s.</div>`;
+    logAccess('POST', '/api/users/lookup', 429, 1, 'rate limited');
+    return;
+  }
+
+  const u = v('s2u');
+  setLoading(el);
+
+  const r = SCENARIOS[2].check(u);
+  // TRUE conditions take slightly longer (DB scans rows), FALSE returns faster
+  const ms = r === 'ok' ? 180 + Math.random() * 200
+           : r === 'false_bool' ? 90 + Math.random() * 100
+           : 100 + Math.random() * 150;
+  await delay(ms);
+
+  const parsed = sqliExtractAnd(u);
+  const prefix  = parsed ? parsed.prefix : '';
+
+  if (r === 'ok') {
+    el.innerHTML = `<div class="response ok" style="margin-top:16px">
+      <div class="res-title">✅ Account located</div>
+      <div class="res-body">
+        <div class="status-grid">
+          <div class="srow"><span class="skey">Username</span><span class="sval">testuser</span></div>
+          <div class="srow"><span class="skey">Status</span><span class="sval active">● Active</span></div>
+          <div class="srow"><span class="skey">Account ID</span><span class="sval">1</span></div>
+          <div class="srow"><span class="skey">active flag</span><span class="sval active">1 (TRUE)</span></div>
+        </div>
+      </div>
+      <div class="flag-box">
+        <div class="flag-lbl">Secret Token (exposed via injection)</div>
+        <div class="flag-val">${FLAGS[2]}</div>
+      </div>
+    </div>`;
+    logAccess('POST', '/api/users/lookup', 200, ms, '1 row returned');
+  } else if (r === 'false_bool') {
+    el.innerHTML = `<div class="response neutral" style="margin-top:16px">
+      <div class="res-title" style="color:var(--text-sub)">⚪ No records found</div>
+      <div class="res-body">
+        The injected condition evaluated to <strong>FALSE</strong>. The database returned 0 rows.<br>
+        <span style="color:var(--text-dim);font-size:13px">Tip: flip your condition to TRUE and observe the difference in response.</span>
+      </div>
+    </div>`;
+    logAccess('POST', '/api/users/lookup', 404, ms, '0 rows (condition FALSE)');
+  } else if (r === 'no_user') {
+    el.innerHTML = `<div class="response partial" style="margin-top:16px">
+      <div class="res-title">⚠ Condition TRUE — but no match</div>
+      <div class="res-body">
+        The boolean condition evaluated to <strong>TRUE</strong>, but no account exists for username
+        <code style="background:var(--surface-3);border-radius:3px;padding:1px 6px;font-family:var(--mono);font-size:13px">${esc(prefix)}</code>.
+        The server returned 0 rows.<br>
+        <span style="color:var(--text-dim);font-size:13px">This confirms your boolean technique works. Now apply it to a known username.</span>
+      </div>
+    </div>`;
+    logAccess('POST', '/api/users/lookup', 404, ms, '0 rows (unknown username)');
+  } else if (r === 'fail') {
+    el.innerHTML = `<div class="response fail" style="margin-top:16px">
+      <div class="res-title">✗ Database error</div>
+      <div class="res-body">Malformed query. Check your input syntax and try again.</div>
+    </div>`;
+    logAccess('POST', '/api/users/lookup', 500, ms, 'SQL parse error');
+  } else {
+    el.innerHTML = `<div class="response neutral" style="margin-top:16px">
+      <div class="res-title" style="color:var(--text-sub)">— No account found</div>
+      <div class="res-body">No active account found for this username.</div>
+    </div>`;
+    logAccess('POST', '/api/users/lookup', 404, ms);
+  }
+}
+
+/* ─── Scenario 3: NexShop Product Search ─────────────── */
+function s3Html() {
+  return `
+  <div class="s3-wrap">
+    <div class="s3-nav site-topbar">
+      <span class="site-logo" style="color:#fbbf24">⬡ NexShop</span>
+      <div class="topbar-links">
+        <a class="topbar-link active">Products</a>
+        <a class="topbar-link">Deals</a>
+        <a class="topbar-link">Categories</a>
+        <a class="topbar-link">Brands</a>
+      </div>
+      <div class="topbar-right">
+        <button class="tbtn tbtn-ghost">🛒 Cart (0)</button>
+        <button class="tbtn tbtn-solid">Sign In</button>
+      </div>
+    </div>
+
+    <div class="s3-search-bar">
+      <h2>Product Catalog</h2>
+      <div class="search-row">
+        <input class="search-inp" id="s3q" type="text"
+          placeholder="Search for products..."
+          oninput="s3_update()" autocomplete="off" spellcheck="false" />
+        <button class="btn-search" onclick="s3_submit()">Search</button>
+      </div>
+      <div class="inj-notice" id="s3w" style="margin-top:8px">⚠ Unexpected characters in input</div>
+    </div>
+
+    <div class="pg">
+      <div id="s3result">
+        <div class="product-grid">${defaultProducts()}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function defaultProducts() {
+  return [
+    { cat: 'Electronics', name: 'Wireless Headphones', price: '$79.99' },
+    { cat: 'Electronics', name: 'USB-C Hub 7-in-1',    price: '$34.99' },
+    { cat: 'Accessories', name: 'Mechanical Keyboard',  price: '$129.00' },
+    { cat: 'Mobile',      name: 'Phone Stand Pro',      price: '$19.99' },
+  ].map(p => `
+    <div class="product-card">
+      <div class="p-cat">${p.cat}</div>
+      <div class="p-name">${p.name}</div>
+      <div class="p-price">${p.price}</div>
+    </div>`).join('');
+}
+
+function s3_update() {
+  const q = v('s3q');
+  updateSql(SCENARIOS[3].queryFn(q));
+  const inj = hasInj(q);
+  document.getElementById('s3q').classList.toggle('bad', inj);
+  document.getElementById('s3w').classList.toggle('show', inj);
+}
+
+async function s3_submit() {
+  const el = document.getElementById('s3result');
+  const rate = checkRate(3);
+  if (rate.blocked) {
+    el.innerHTML = `<div class="rate-limit-msg">⏱ Search rate limited. Retry in ${rate.wait}s.</div>`;
+    logAccess('GET', '/api/products/search', 429, 1, 'rate limited');
+    return;
+  }
+
+  const q = v('s3q');
+  setLoading(el);
+
+  const r = SCENARIOS[3].check(q);
+  const ms = r === 'ok' ? 250 + Math.random() * 200 : 100 + Math.random() * 180;
+  await delay(ms);
+
+  if (r === 'ok') {
+    el.innerHTML = `
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">
+        2 results for "<span style="color:var(--text-sub)">${esc(q)}</span>"
+      </p>
+      <div class="product-grid">
+        <div class="product-card">
+          <div class="p-cat">Electronics</div>
+          <div class="p-name">USB-C Hub 7-in-1</div>
+          <div class="p-price">$34.99</div>
+        </div>
+        <div class="product-card leaked">
+          <div class="p-cat" style="color:var(--syn-inj)">⚠ UNION result — secrets table</div>
+          <div class="p-name leaked">${FLAGS[3]}</div>
+          <div class="p-price leaked">extracted via injection</div>
+        </div>
+      </div>`;
+    logAccess('GET', '/api/products/search', 200, ms, '2 rows (1 injected)');
+  } else if (r === 'col_low') {
+    el.innerHTML = `<div class="response fail">
+      <div class="res-title">✗ Column count mismatch</div>
+      <div class="res-body">
+        <strong>Error:</strong> The SELECT statements in a UNION have a different number of columns.<br>
+        The original query returns <strong>3 columns</strong>: <code style="background:var(--surface-3);border-radius:3px;padding:1px 6px;font-family:var(--mono);font-size:13px">id, name, price</code>.
+        Your UNION SELECT has <strong>fewer</strong>. Adjust the column count to match.
+      </div>
+    </div>`;
+    logAccess('GET', '/api/products/search', 500, ms, 'column count mismatch');
+  } else if (r === 'col_high') {
+    el.innerHTML = `<div class="response fail">
+      <div class="res-title">✗ Column count mismatch</div>
+      <div class="res-body">
+        <strong>Error:</strong> The SELECT statements in a UNION have a different number of columns.<br>
+        Your UNION SELECT has <strong>too many columns</strong>. The original query returns exactly <strong>3</strong>: <code style="background:var(--surface-3);border-radius:3px;padding:1px 6px;font-family:var(--mono);font-size:13px">id, name, price</code>.
+      </div>
+    </div>`;
+    logAccess('GET', '/api/products/search', 500, ms, 'column count mismatch');
+  } else if (r === 'fail') {
+    el.innerHTML = `<div class="response fail">
+      <div class="res-title">✗ Search error</div>
+      <div class="res-body">Your query caused a database error. Check the SQL Inspector below.</div>
+    </div>`;
+    logAccess('GET', '/api/products/search', 500, ms, 'SQL parse error');
+  } else if (q.trim() === '') {
+    el.innerHTML = `<div class="product-grid">${defaultProducts()}</div>`;
+    logAccess('GET', '/api/products/search', 200, ms);
+  } else {
+    el.innerHTML = `<div class="empty-state">
+      <p style="font-size:32px;margin-bottom:12px">🔍</p>
+      <p>No products found for "<strong>${esc(q)}</strong>"</p>
+      <p style="margin-top:8px;color:var(--text-dim);font-size:13px">Try a different search term.</p>
+    </div>`;
+    logAccess('GET', '/api/products/search', 200, ms, '0 rows');
+  }
+}
+
+/* ─── Scenario 4: AdminCP User Management ────────────── */
+function s4Html() {
+  return `
+  <div class="s4-wrap">
+    <div class="s4-sidebar">
+      <div class="s4-brand">
+        <h3>⚙ AdminCP</h3>
+        <p>v3.2.1 — Management Console</p>
+      </div>
+      <div class="sideitem on"><span class="sideitem-icon">👤</span> User Management</div>
+      <div class="sideitem"><span class="sideitem-icon">📋</span> Content</div>
+      <div class="sideitem"><span class="sideitem-icon">📊</span> Analytics</div>
+      <div class="sideitem"><span class="sideitem-icon">🔔</span> Notifications</div>
+      <div class="sideitem"><span class="sideitem-icon">📁</span> File Manager</div>
+      <div class="sideitem"><span class="sideitem-icon">⚙</span> Settings</div>
+      <div style="margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)">
+        <div style="font-size:12px;color:var(--text-dim)">Logged in as</div>
+        <div style="font-size:13px;color:var(--text-sub);margin-top:2px">agent@corp.io</div>
+      </div>
+    </div>
+
+    <div class="s4-main">
+      <div class="s4-toprow">
+        <div>
+          <h2>User Management</h2>
+          <p>Search and manage registered admin users</p>
+        </div>
+        <div class="waf-chip">🛡 SecureWAF™ v2.1 Active</div>
+      </div>
+
+      <div class="filter-row">
+        <input class="finp" id="s4u" type="text"
+          placeholder="Search by username..."
+          oninput="s4_update()" autocomplete="off" spellcheck="false" />
+        <button class="btn-go" onclick="s4_submit()">Search</button>
+      </div>
+
+      <div class="inj-notice" id="s4w" style="margin-bottom:12px">⚠ Unexpected characters detected in input</div>
+
+      <div id="s4result">
+        <div class="tbl-wrap">
+          <table class="dtbl">
+            <tr><th>ID</th><th>Username</th><th>Role</th><th>Status</th><th>Last Login</th></tr>
+            <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-dim)">Enter a username to search</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function s4_update() {
+  const u = v('s4u');
+  updateSql(SCENARIOS[4].queryFn(u));
+  const inj = hasInj(u);
+  document.getElementById('s4u').classList.toggle('bad', inj);
+  document.getElementById('s4w').classList.toggle('show', inj);
+}
+
+async function s4_submit() {
+  const el = document.getElementById('s4result');
+  const rate = checkRate(4);
+  if (rate.blocked) {
+    el.innerHTML = `<div class="rate-limit-msg" style="margin-top:4px">⏱ Too many requests — rate limited for ${rate.wait}s.</div>`;
+    logAccess('GET', '/api/admin/users', 429, 1, 'rate limited');
+    return;
+  }
+
+  const u = v('s4u');
+  setLoading(el);
+
+  const r = SCENARIOS[4].check(u);
+
+  // WAF blocks before request hits DB — returns almost instantly
+  if (r && r.type === 'waf') {
+    await delay(4 + Math.random() * 8);
+    const wafMs = 6;
+    el.innerHTML = `<div class="response blocked" style="margin-top:4px">
+      <div class="res-title">🛡 Request blocked — HTTP 403</div>
+      <div class="res-body">
+        SecureWAF™ intercepted your request before it reached the database.<br><br>
+        Rule triggered: <code style="background:var(--surface-3);border-radius:3px;padding:2px 7px;font-family:var(--mono);font-size:13px">${esc(r.rule)}</code><br><br>
+        The WAF caught a <strong>generic</strong> pattern. Consider a more targeted payload that references specific column names rather than universal tautologies.
+      </div>
+    </div>`;
+    logAccess('GET', '/api/admin/users', 403, wafMs, `WAF: ${r.rule}`);
+    return;
+  }
+
+  const ms = r === 'ok' ? 200 + Math.random() * 180 : 80 + Math.random() * 130;
+  await delay(ms);
+
+  if (r === 'ok') {
+    el.innerHTML = `
+      <div class="tbl-wrap">
+        <table class="dtbl">
+          <tr><th>ID</th><th>Username</th><th>Role</th><th>Status</th><th>Secret Key</th></tr>
+          <tr class="ok-row">
+            <td>1</td>
+            <td><strong>admin</strong></td>
+            <td>Superadmin</td>
+            <td>● Active</td>
+            <td style="font-family:var(--mono);color:var(--yellow)">${FLAGS[4]}</td>
+          </tr>
+        </table>
+      </div>`;
+    logAccess('GET', '/api/admin/users', 200, ms, '1 row returned');
+  } else if (r === 'fail') {
+    el.innerHTML = `<div class="response fail" style="margin-top:4px">
+      <div class="res-title">✗ Database error</div>
+      <div class="res-body">Malformed query. Review your input syntax and try again.</div>
+    </div>`;
+    logAccess('GET', '/api/admin/users', 500, ms, 'SQL parse error');
+  } else if (!u.trim()) {
+    el.innerHTML = `<div class="tbl-wrap"><table class="dtbl">
+      <tr><th>ID</th><th>Username</th><th>Role</th><th>Status</th><th>Last Login</th></tr>
+      <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-dim)">Enter a username to search</td></tr>
+    </table></div>`;
+  } else {
+    el.innerHTML = `<div class="tbl-wrap"><table class="dtbl">
+      <tr><th>ID</th><th>Username</th><th>Role</th><th>Status</th><th>Last Login</th></tr>
+      <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-dim)">No matching users found</td></tr>
+    </table></div>`;
+    logAccess('GET', '/api/admin/users', 200, ms, '0 rows');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════════ */
+renderTabs();
+renderScenario(1);
+updateSql(SCENARIOS[1].queryFn('', ''));
+</script>
+</body>
+</html>
