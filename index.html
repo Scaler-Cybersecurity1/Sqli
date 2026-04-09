@@ -856,18 +856,11 @@ let consoleOpen = true;
    SESSION-RANDOMIZED FLAGS
    Generated fresh on every page load — can't be googled.
 ═══════════════════════════════════════════════════════════ */
-function genToken() {
-  return [...crypto.getRandomValues(new Uint8Array(5))]
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('')
-    .toUpperCase();
-}
-
 const FLAGS = {
-  1: `FLAG{AUTH_${genToken()}}`,
-  2: `FLAG{BOOL_${genToken()}}`,
-  3: `FLAG{UNION_${genToken()}}`,
-  4: `FLAG{WAF_${genToken()}}`
+  1: 'FLAG{Scaler_AUTH_B7P4SS}',
+  2: 'FLAG{Scaler_BL1ND_TRU3}',
+  3: 'FLAG{Scaler_UN10N_L34K}',
+  4: 'FLAG{Scaler_W4F_3V4D3}'
 };
 
 /* ═══════════════════════════════════════════════════════════
