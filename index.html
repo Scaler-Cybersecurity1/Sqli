@@ -42,6 +42,49 @@
       --syn-op:  #f472b6;
       --mono: 'Cascadia Code','Fira Code','Consolas',monospace;
       --r: 10px; --r-sm: 6px;
+      --lab-bar-bg: #0a0d14;
+      --console-bg: #09090f;
+      --console-tab-bg: #0d1020;
+      --nav-bg: #0d1424;
+    }
+
+    [data-theme="light"] {
+      --bg:         #f5f7fa;
+      --surface:    #ffffff;
+      --surface-2:  #f0f2f5;
+      --surface-3:  #e8ebf0;
+      --border:     #d8dde6;
+      --border-2:   #c5cdd8;
+      --text:       #1a2332;
+      --text-sub:   #4a5568;
+      --text-dim:   #8a96a8;
+      --blue:       #3b7cf5;
+      --green:      #22b07a;
+      --red:        #e54545;
+      --yellow:     #d99e00;
+      --purple:     #8b5cf6;
+      --cyan:       #0891b2;
+      --blue-bg:    rgba(59,124,245,.08);
+      --blue-brd:   rgba(59,124,245,.2);
+      --green-bg:   rgba(34,176,122,.06);
+      --green-brd:  rgba(34,176,122,.2);
+      --red-bg:     rgba(229,69,69,.06);
+      --red-brd:    rgba(229,69,69,.18);
+      --yellow-bg:  rgba(217,158,0,.06);
+      --yellow-brd: rgba(217,158,0,.2);
+      --purple-bg:  rgba(139,92,246,.06);
+      --purple-brd: rgba(139,92,246,.2);
+      --syn-kw:  #7c3aed;
+      --syn-str: #16a34a;
+      --syn-inj: #ea580c;
+      --syn-cmt: #94a3b8;
+      --syn-num: #0891b2;
+      --syn-tbl: #b45309;
+      --syn-op:  #db2777;
+      --lab-bar-bg: #ffffff;
+      --console-bg: #f8f9fb;
+      --console-tab-bg: #f0f2f5;
+      --nav-bg: #ffffff;
     }
 
     html, body { height: 100%; }
@@ -60,7 +103,7 @@
        LAB BAR
     ═══════════════════════════════════════════════════ */
     .lab-bar {
-      background: #0a0d14;
+      background: var(--lab-bar-bg);
       border-bottom: 1px solid var(--border);
       padding: 0 20px;
       height: 46px;
@@ -129,7 +172,7 @@
       position: fixed;
       bottom: 0; left: 0; right: 0;
       z-index: 100;
-      background: #09090f;
+      background: var(--console-bg);
       border-top: 1px solid var(--border);
       transition: height 0.2s ease;
       height: 280px;
@@ -139,7 +182,7 @@
 
     .devtools-tabs {
       height: 38px;
-      background: #0d1020;
+      background: var(--console-tab-bg);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: stretch;
@@ -524,7 +567,7 @@
        SCENARIO 1: CorpNet Login
     ═══════════════════════════════════════════════════ */
     .s1-wrap { background: var(--bg); min-height: 100%; }
-    .s1-nav  { background: #0d1424; }
+    .s1-nav  { background: var(--nav-bg); }
 
     .s1-body {
       display: flex;
@@ -572,10 +615,10 @@
        SCENARIO 2: DataSync Account Lookup
     ═══════════════════════════════════════════════════ */
     .s2-wrap { background: var(--bg); }
-    .s2-nav  { background: #0d1424; }
+    .s2-nav  { background: var(--nav-bg); }
 
     .s2-hero {
-      background: linear-gradient(180deg,#11182a,var(--bg));
+      background: linear-gradient(180deg,var(--surface),var(--bg));
       border-bottom: 1px solid var(--border);
       padding: 32px 32px 28px;
     }
@@ -637,10 +680,10 @@
        SCENARIO 3: NexShop Product Search
     ═══════════════════════════════════════════════════ */
     .s3-wrap { background: var(--bg); }
-    .s3-nav  { background: #0c1220; }
+    .s3-nav  { background: var(--nav-bg); }
 
     .s3-search-bar {
-      background: linear-gradient(180deg,#101726,var(--bg));
+      background: linear-gradient(180deg,var(--surface),var(--bg));
       border-bottom: 1px solid var(--border);
       padding: 28px 32px;
     }
@@ -723,7 +766,7 @@
 
     .s4-sidebar {
       width: 220px;
-      background: #0b0f1a;
+      background: var(--nav-bg);
       border-right: 1px solid var(--border);
       flex-shrink: 0;
       padding: 20px 0;
@@ -795,6 +838,24 @@
 
     .btn-go:hover { border-color: var(--blue); color: var(--blue); }
 
+    /* ═══════════════════════════════════════════════════
+       THEME TOGGLE
+    ═══════════════════════════════════════════════════ */
+    .theme-toggle {
+      margin-left: auto;
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 15px;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .theme-toggle:hover { border-color: var(--blue); background: var(--blue-bg); }
+
     /* Scrollbar */
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
@@ -809,6 +870,9 @@
     <span class="lab-title">SQL Injection Lab</span>
     <div class="lab-sep"></div>
     <div class="scenario-tabs" id="tabs"></div>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">
+      <span id="themeIcon">☀</span>
+    </button>
   </div>
 
   <!-- ─── Website viewport ────────────────────────────── -->
@@ -817,10 +881,6 @@
   <!-- ─── SQL Inspector (DevTools-style) ──────────────── -->
   <div class="sql-console" id="sqlConsole">
     <div class="devtools-tabs">
-      <div class="dt-tab">Elements</div>
-      <div class="dt-tab">Console</div>
-      <div class="dt-tab">Network</div>
-      <div class="dt-tab">Sources</div>
       <div class="dt-tab sql-tab" onclick="toggleConsole()">▶ SQL Inspector</div>
       <div class="dt-collapse" onclick="toggleConsole()">
         <span id="collapseLabel">▼ collapse</span>
@@ -851,6 +911,26 @@
 ═══════════════════════════════════════════════════════════ */
 let cur = 1;
 let consoleOpen = true;
+
+/* ═══════════════════════════════════════════════════════════
+   THEME TOGGLE
+═══════════════════════════════════════════════════════════ */
+function toggleTheme() {
+  const html = document.documentElement;
+  const isLight = html.getAttribute('data-theme') === 'light';
+  html.setAttribute('data-theme', isLight ? 'dark' : 'light');
+  document.getElementById('themeIcon').textContent = isLight ? '☀' : '☾';
+  localStorage.setItem('sqli-theme', isLight ? 'dark' : 'light');
+}
+
+(function initTheme() {
+  const saved = localStorage.getItem('sqli-theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    const icon = document.getElementById('themeIcon');
+    if (icon) icon.textContent = '☾';
+  }
+})();
 
 /* ═══════════════════════════════════════════════════════════
    SESSION-RANDOMIZED FLAGS
@@ -1194,14 +1274,6 @@ function s1Html() {
   <div class="s1-wrap">
     <div class="s1-nav site-topbar">
       <span class="site-logo" style="color:#fff">🔷 CorpNet</span>
-      <div class="topbar-links">
-        <a class="topbar-link">Home</a>
-        <a class="topbar-link">About</a>
-        <a class="topbar-link">Support</a>
-      </div>
-      <div class="topbar-right">
-        <button class="tbtn tbtn-ghost">Contact IT</button>
-      </div>
     </div>
 
     <div class="s1-body">
@@ -1233,9 +1305,6 @@ function s1Html() {
 
         <button class="btn btn-blue btn-full" onclick="s1_submit()">Sign In →</button>
 
-        <div class="login-sub">
-          <a>Forgot password?</a> &nbsp;·&nbsp; <a>Contact IT Support</a>
-        </div>
 
         <div id="s1result" style="margin-top:18px"></div>
       </div>
@@ -1302,14 +1371,6 @@ function s2Html() {
   <div class="s2-wrap">
     <div class="s2-nav site-topbar">
       <span class="site-logo" style="color:#34d399">⬡ DataSync</span>
-      <div class="topbar-links">
-        <a class="topbar-link active">Support Portal</a>
-        <a class="topbar-link">Tickets</a>
-        <a class="topbar-link">Documentation</a>
-      </div>
-      <div class="topbar-right">
-        <button class="tbtn tbtn-ghost">Agent Login</button>
-      </div>
     </div>
 
     <div class="s2-hero">
@@ -1430,16 +1491,6 @@ function s3Html() {
   <div class="s3-wrap">
     <div class="s3-nav site-topbar">
       <span class="site-logo" style="color:#fbbf24">⬡ NexShop</span>
-      <div class="topbar-links">
-        <a class="topbar-link active">Products</a>
-        <a class="topbar-link">Deals</a>
-        <a class="topbar-link">Categories</a>
-        <a class="topbar-link">Brands</a>
-      </div>
-      <div class="topbar-right">
-        <button class="tbtn tbtn-ghost">🛒 Cart (0)</button>
-        <button class="tbtn tbtn-solid">Sign In</button>
-      </div>
     </div>
 
     <div class="s3-search-bar">
@@ -1565,15 +1616,6 @@ function s4Html() {
         <p>v3.2.1 — Management Console</p>
       </div>
       <div class="sideitem on"><span class="sideitem-icon">👤</span> User Management</div>
-      <div class="sideitem"><span class="sideitem-icon">📋</span> Content</div>
-      <div class="sideitem"><span class="sideitem-icon">📊</span> Analytics</div>
-      <div class="sideitem"><span class="sideitem-icon">🔔</span> Notifications</div>
-      <div class="sideitem"><span class="sideitem-icon">📁</span> File Manager</div>
-      <div class="sideitem"><span class="sideitem-icon">⚙</span> Settings</div>
-      <div style="margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)">
-        <div style="font-size:12px;color:var(--text-dim)">Logged in as</div>
-        <div style="font-size:13px;color:var(--text-sub);margin-top:2px">agent@corp.io</div>
-      </div>
     </div>
 
     <div class="s4-main">
